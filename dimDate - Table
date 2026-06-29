@@ -1,0 +1,15 @@
+dimDate =
+ADDCOLUMNS(
+    CALENDAR(
+        MIN(AllCompanies[Period]),
+        MAX(AllCompanies[Period])
+    ),
+    "Year",              YEAR([Date]),
+    "Month Number",      MONTH([Date]),
+    "Month Name",        FORMAT([Date], "MMMM"),
+    "Month Short",       FORMAT([Date], "MMM"),
+    "Quarter Number",    QUARTER([Date]),
+    "Quarter",           "Q" & QUARTER([Date]),
+    "Year-Month Sort",   YEAR([Date]) * 100 + MONTH([Date]),
+    "Year-Month Label",  FORMAT([Date], "MMM YYYY")
+)
