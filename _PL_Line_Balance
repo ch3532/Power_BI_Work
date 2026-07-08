@@ -1,0 +1,62 @@
+_PL_Line_Balance = 
+VAR SelectedDate = MAX(DimDate[Date])
+VAR JanEndDate = DATE(2025, 1, 31)
+VAR CurrentCompany = SELECTEDVALUE(DimCompany[Company])
+VAR ValidCompanies = {"200", "240", "310", "320", "350"}
+VAR SelectedYear = YEAR(SelectedDate)
+VAR FiscalYearStart = DATE(SelectedYear, 1, 1)
+VAR CurrentPLLineKey = SELECTEDVALUE(DimPL_Line[PL_Line_Key])
+VAR CurrentSignConvention = SELECTEDVALUE(DimPL_Line[SignConvention])
+
+VAR MappedAccounts = 
+    CALCULATETABLE(
+        VALUES(Bridge_PL_GL[AccountKey]),
+        DimPL_Line[PL_Line_Key] = CurrentPLLineKey,
+        REMOVEFILTERS(DimDate),
+        REMOVEFILTERS(DimPL_Line)
+    )
+
+VAR MappedAccountNumbers = 
+    SELECTCOLUMNS(
+        MappedAccounts,
+        "AcctNum", LEFT(Bridge_PL_GL[AccountKey], FIND("|", Bridge_PL_GL[AccountKey]) - 1)
+    )
+
+VAR JanBal = 
+    IF(
+        SelectedYear = 2025,
+        CALCULATE(
+            SUM('Jan TB by Department'[Ending Balance]),
+            TREATAS(MappedAccountNumbers, 'Jan TB by Department'[Account]),
+            'Jan TB by Department'[Entity] IN ValidCompanies,
+            ISBLANK(CurrentCompany) 
+                || 'Jan TB by Department'[Entity] = CurrentCompany,
+            REMOVEFILTERS(DimPL_Line),
+            REMOVEFILTERS(Bridge_PL_GL),
+            REMOVEFILTERS(DimDate)
+        ),
+        0
+    )
+
+VAR GLStart = 
+    IF(SelectedYear = 2025, JanEndDate, FiscalYearStart - 1)
+
+VAR GLActivity = 
+    CALCULATE(
+        SUM('General Ledger'[TOTAL]),
+        'General Ledger'[Company] IN ValidCompanies,
+        ISBLANK(CurrentCompany) 
+            || 'General Ledger'[Company] = CurrentCompany,
+        'General Ledger'[Period_Date] > GLStart,
+        'General Ledger'[Period_Date] <= EOMONTH(SelectedDate, 0),
+        REMOVEFILTERS(DimDate)
+    )
+
+VAR RawBalance = JanBal + GLActivity
+
+RETURN
+IF(
+    ISBLANK(CurrentPLLineKey),
+    BLANK(),
+    IF(RawBalance = 0, BLANK(), RawBalance * CurrentSignConvention)
+)
