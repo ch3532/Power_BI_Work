@@ -1,0 +1,134 @@
+P&L Current Month Display Value = 
+VAR CurrentPLLine = SELECTEDVALUE('P&L Rows'[PL_Line])
+VAR FranRowNum = SELECTEDVALUE('P&L Rows'[Fran Schema])
+VAR ResRevRowNum = SELECTEDVALUE('P&L Rows'[ResRev Schema])
+VAR MktRowNum = SELECTEDVALUE('P&L Rows'[Marketing Schema])
+
+VAR FranPLLine =
+    MAXX(FILTER(ALL(Fran), Fran[PL_Row_Num] = FranRowNum), Fran[PL Line])
+VAR ResRevPLLine =
+    MAXX(FILTER(ALL(ResRev), ResRev[PL_Row_Num] = ResRevRowNum), ResRev[PL Line])
+VAR MktPLLine =
+    MAXX(FILTER(ALL(Marketing), Marketing[PL_Row_Num] = MktRowNum), Marketing[PL Line])
+
+VAR FranEffective =
+    IF(NOT ISBLANK(FranPLLine) && COUNTROWS(FILTER(ALL(DimPL_Line), DimPL_Line[PL_Line] = FranPLLine && DimPL_Line[Schema] = "Fran")) > 0, FranPLLine, CurrentPLLine)
+VAR ResRevEffective =
+    IF(NOT ISBLANK(ResRevPLLine) && COUNTROWS(FILTER(ALL(DimPL_Line), DimPL_Line[PL_Line] = ResRevPLLine && DimPL_Line[Schema] = "ResRev")) > 0, ResRevPLLine, CurrentPLLine)
+VAR MktEffective =
+    IF(NOT ISBLANK(MktPLLine) && COUNTROWS(FILTER(ALL(DimPL_Line), DimPL_Line[PL_Line] = MktPLLine && DimPL_Line[Schema] = "Marketing")) > 0, MktPLLine, CurrentPLLine)
+
+VAR LookupPLLine = COALESCE(FranEffective, ResRevEffective, MktEffective, CurrentPLLine)
+
+VAR CurrentIsTotal =
+    IF(ISBLANK(CurrentPLLine), FALSE(),
+        CALCULATE(SELECTEDVALUE(DimPL_Line[IsTotal], FALSE()), REMOVEFILTERS(DimPL_Line), DimPL_Line[PL_Line] = LookupPLLine))
+VAR CurrentIsSectionHeader =
+    IF(ISBLANK(CurrentPLLine), FALSE(),
+        CALCULATE(SELECTEDVALUE(DimPL_Line[IsSectionHeader], FALSE()), REMOVEFILTERS(DimPL_Line), DimPL_Line[PL_Line] = LookupPLLine))
+VAR CurrentSection =
+    IF(ISBLANK(CurrentPLLine), BLANK(),
+        CALCULATE(MIN(DimPL_Line[Section]), REMOVEFILTERS(DimPL_Line), DimPL_Line[PL_Line] = LookupPLLine))
+
+VAR ActiveSchemas = CALCULATETABLE(VALUES(DimDepartmentGroup[Schema]), REMOVEFILTERS(DimPL_Line))
+
+VAR SumSectionCM = 
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S && DimPL_Line[Section] = CurrentSection),
+        [P&L Current Month]))
+
+VAR RevSumCM = 
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S && DimPL_Line[Section] = "REVENUE"),
+        [P&L Current Month]))
+
+VAR ControllableExpSumCM = 
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S
+        && DimPL_Line[Section] IN {"SALARIES & WAGES", "PAYROLL RELATED BENEFITS", "OTHER BENEFITS", "SUPPLIES", "TRAVEL & SUBSCRIPTIONS", "OUTSIDE SERVICES", "GUEST FINANCE EXPENSE", "MARKETING", "OTHER OPERATING EXPENSE", "ENERGY", "OTHER UTILITIES"}),
+        [P&L Current Month]))
+
+VAR FeesSumCM = 
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S && DimPL_Line[Section] = "FEES"),
+        [P&L Current Month]))
+
+VAR TaxInsSumCM = 
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S && DimPL_Line[Section] IN {"TAXES", "INSURANCE"}),
+        [P&L Current Month]))
+
+VAR RentLeaseSumCM = 
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[Schema] = S && DimPL_Line[Section] = "RENT/LEASE" && DimPL_Line[IsTotal] = TRUE()),
+        [P&L Current Month]))
+
+VAR DeprecSumCM = 
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S && DimPL_Line[Section] = "DEPRECIATION/AMORTIZATION"),
+        [P&L Current Month]))
+
+VAR InterestSumCM = 
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S && DimPL_Line[Section] = "INTEREST"),
+        [P&L Current Month]))
+
+VAR IncomeTaxSumCM = 
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S && DimPL_Line[Section] = "INCOME TAXES"),
+        [P&L Current Month]))
+
+VAR PayrollBenefitsCM =
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S && DimPL_Line[Section] IN {"PAYROLL RELATED BENEFITS", "OTHER BENEFITS"}),
+        [P&L Current Month]))
+
+VAR TotalPersonnelCM =
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema] RETURN
+    SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S && DimPL_Line[Section] IN {"SALARIES & WAGES", "PAYROLL RELATED BENEFITS", "OTHER BENEFITS"}),
+        [P&L Current Month]))
+
+// Non-Controllable Expenses = Fees + Tax/Ins/Bank + Rent/Lease
+VAR NonControllableExpSumCM = -FeesSumCM - TaxInsSumCM - RentLeaseSumCM
+
+VAR NOI_CM = (-RevSumCM) - (-ControllableExpSumCM) - (-FeesSumCM) - (-TaxInsSumCM) - (-RentLeaseSumCM)
+
+VAR DetailValue =
+    SUMX(ActiveSchemas, VAR S = DimDepartmentGroup[Schema]
+        VAR EffectivePLLine = SWITCH(S, "Fran", FranEffective, "ResRev", ResRevEffective, "Marketing", MktEffective, CurrentPLLine)
+        RETURN SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[PL_Line] = EffectivePLLine && DimPL_Line[IsTotal] = FALSE() && DimPL_Line[IsSectionHeader] = FALSE() && DimPL_Line[Schema] = S), [P&L Current Month]))
+
+VAR RawValue = 
+    SWITCH(
+        TRUE(),
+        CurrentIsSectionHeader, BLANK(),
+        NOT CurrentIsTotal, -DetailValue,
+        CurrentIsTotal && CurrentSection = "RENT/LEASE",
+            -SUMX(FILTER(ALL(DimPL_Line), DimPL_Line[PL_Line] = LookupPLLine && DimPL_Line[IsTotal] = TRUE() && DimPL_Line[Section] = "RENT/LEASE" && DimPL_Line[Schema] IN ActiveSchemas), [P&L Current Month]),
+        CurrentIsTotal && CurrentSection IN {
+            "REVENUE", "SALARIES & WAGES", "PAYROLL RELATED BENEFITS",
+            "OTHER BENEFITS", "SUPPLIES", "TRAVEL & SUBSCRIPTIONS",
+            "OUTSIDE SERVICES", "GUEST FINANCE EXPENSE", "MARKETING",
+            "OTHER OPERATING EXPENSE", "ENERGY", "OTHER UTILITIES",
+            "FEES", "TAXES", "INSURANCE",
+            "DEPRECIATION/AMORTIZATION", "INTEREST", "INCOME TAXES"
+        }, -SumSectionCM,
+        CurrentIsTotal && CurrentPLLine = "Gross Payroll Tax & Benefits", -PayrollBenefitsCM,
+        CurrentIsTotal && CurrentPLLine = "Total Personnel Costs", -TotalPersonnelCM,
+        CurrentIsTotal && CurrentPLLine = "TOTAL CONTROLLABLE EXPENSE", -ControllableExpSumCM,
+        CurrentIsTotal && CurrentPLLine = "Total Tax, Insurance & Bank Charges", -TaxInsSumCM,
+        CurrentIsTotal && CurrentPLLine = "Total Controllable Profit", (-RevSumCM) - (-ControllableExpSumCM),
+         CurrentIsTotal && CurrentPLLine = "Total Non-Controllable Expenses", NonControllableExpSumCM,
+        CurrentIsTotal && CurrentSection = "NET OPERATING INCOME", NOI_CM,
+        CurrentIsTotal && CurrentSection = "EBIT", NOI_CM - (-DeprecSumCM),
+        CurrentIsTotal && CurrentPLLine = "Income Before Tax / Excep. Items", NOI_CM - (-DeprecSumCM) - (-InterestSumCM),
+        CurrentIsTotal && CurrentPLLine = "Net Income (Loss) Before Taxes", NOI_CM - (-DeprecSumCM) - (-InterestSumCM),
+        CurrentIsTotal && CurrentPLLine = "Net Income (Loss)", NOI_CM - (-DeprecSumCM) - (-InterestSumCM) - (-IncomeTaxSumCM),
+        BLANK()
+    )
+
+RETURN
+    IF(CurrentIsSectionHeader, BLANK(),
+        IF(ISBLANK(RawValue) || RawValue = 0, "-",
+            IF(CurrentPLLine = "Calls Handled", FORMAT(RawValue, "#,##0"),
+                IF(RawValue < 0, "(" & FORMAT(ABS(RawValue), "$#,##0") & ")", FORMAT(RawValue, "$#,##0")))))
