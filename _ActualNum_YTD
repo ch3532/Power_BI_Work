@@ -1,0 +1,5 @@
+_ActualNum_YTD = 
+VAR ActStr = [P&L YTD Display Value]
+RETURN
+    IF(ActStr = "-", 0,
+        VALUE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(ActStr, "$", ""), "(", "-"), ")", "")))
