@@ -1,0 +1,22 @@
+P&L Current Month = 
+VAR SelectedDate = MAX(DimDate[Date])
+VAR CurrentCompany = SELECTEDVALUE(DimCompany[Company])
+VAR ValidCompanies = {"200", "240", "310", "320", "350"}
+VAR CurrentPLLineKey = SELECTEDVALUE(DimPL_Line[PL_Line_Key])
+VAR CurrentSignConvention = SELECTEDVALUE(DimPL_Line[SignConvention])
+
+VAR MonthActivity = 
+    CALCULATE(
+        SUM('General Ledger'[TOTAL]),
+        'General Ledger'[Company] IN ValidCompanies,
+        ISBLANK(CurrentCompany) 
+            || 'General Ledger'[Company] = CurrentCompany,
+        MONTH('General Ledger'[Period_Date]) = MONTH(SelectedDate),
+        YEAR('General Ledger'[Period_Date])  = YEAR(SelectedDate),
+        REMOVEFILTERS(DimDate)
+    )
+
+VAR DetailValue = MonthActivity * CurrentSignConvention
+
+RETURN
+IF(ISBLANK(CurrentPLLineKey), BLANK(), DetailValue)
