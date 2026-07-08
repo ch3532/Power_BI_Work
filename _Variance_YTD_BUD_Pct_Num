@@ -1,0 +1,6 @@
+_Variance_YTD_BUD_Pct_Num = 
+VAR CompareNum = COALESCE([_Budget_YTD_Num], 0)
+RETURN
+    IF(ISBLANK(SELECTEDVALUE('P&L Rows'[PL_Line])), BLANK(),
+        IF(CompareNum = 0, 0,
+            ([_ActualNum_YTD] - CompareNum) / ABS(CompareNum) * [_SignFlip]))
