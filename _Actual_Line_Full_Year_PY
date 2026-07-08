@@ -1,0 +1,39 @@
+_Actual_Line_Full_Year_PY = 
+VAR SelectedDate    = MAX ( DimDate[Date] )
+VAR PriorYear       = YEAR ( SelectedDate ) - 1
+VAR PYStart         = DATE ( PriorYear, 1, 1 )
+VAR PYEnd           = DATE ( PriorYear, 12, 31 )
+VAR CurrentRowNum   = SELECTEDVALUE ( 'P&L Rows'[PL_Row_Num] )
+
+VAR ActiveSchemas =
+    CALCULATETABLE ( VALUES ( DimDepartmentGroup[Schema] ), REMOVEFILTERS ( DimPL_Line ) )
+VAR BridgeKeys =
+    CALCULATETABLE ( VALUES ( 'PL_#_Mapping'[Budget_Bridge_PL_Line] ),
+        'PL_#_Mapping'[PL_Row_Num] = CurrentRowNum, 'PL_#_Mapping'[Schema] IN ActiveSchemas )
+VAR FranLines =
+    CALCULATETABLE ( SELECTCOLUMNS ( Fran, "BL", Fran[FL_Line_Item - SV] ),
+        Fran[Budget_Bridge_PL_Line] IN BridgeKeys, FILTER ( ALL ( Fran ), CONTAINSROW ( ActiveSchemas, "Fran" ) ) )
+VAR ResRevLines =
+    CALCULATETABLE ( SELECTCOLUMNS ( ResRev, "BL", ResRev[FL_Line_Item - SV] ),
+        ResRev[Budget_Bridge_PL_Line] IN BridgeKeys, FILTER ( ALL ( ResRev ), CONTAINSROW ( ActiveSchemas, "ResRev" ) ) )
+VAR MarketingLines =
+    CALCULATETABLE ( SELECTCOLUMNS ( Marketing, "BL", Marketing[FL_Line_Item - SV] ),
+        Marketing[Budget_Bridge_PL_Line] IN BridgeKeys, FILTER ( ALL ( Marketing ), CONTAINSROW ( ActiveSchemas, "Marketing" ) ) )
+VAR BudgetLineItems = UNION ( FranLines, ResRevLines, MarketingLines )
+VAR DeptGroupKeys = VALUES ( Bridge_Dept_Group[DeptGroup_Key] )
+VAR MappedDepts =
+    CALCULATETABLE ( VALUES ( Department_Budget_Mapping[PBCS_Department] ),
+        TREATAS ( DeptGroupKeys, Department_Budget_Mapping[DeptGroup_Key] ) )
+
+RETURN
+    IF ( ISBLANK ( CurrentRowNum ) || ISEMPTY ( BridgeKeys ) || ISEMPTY ( BudgetLineItems ), BLANK (),
+        CALCULATE (
+            SUM ( PBCS[Value] ),
+            PBCS[Type] = "Actual",
+            PBCS[Date] >= PYStart,
+            PBCS[Date] <= PYEnd,
+            TREATAS ( BudgetLineItems, PBCS[Budget_Line] ),
+            PBCS[Department] IN MappedDepts,
+            REMOVEFILTERS ( DimDate ), REMOVEFILTERS ( PBCS )
+        )
+    )
