@@ -1,0 +1,78 @@
+Dept_YTD_Amount = 
+VAR HasPLSelection = NOT ISBLANK(SELECTEDVALUE('P&L Rows'[PL_Line]))
+VAR CurrentPLLine = SELECTEDVALUE('P&L Rows'[PL_Line])
+ 
+VAR IsTotal =
+    IF(
+        ISBLANK(CurrentPLLine), FALSE(),
+        CALCULATE(
+            SELECTEDVALUE(DimPL_Line[IsTotal], FALSE()),
+            REMOVEFILTERS(DimPL_Line),
+            DimPL_Line[PL_Line] = CurrentPLLine
+        )
+    )
+ 
+VAR IsSectionHeader =
+    IF(
+        ISBLANK(CurrentPLLine), FALSE(),
+        CALCULATE(
+            SELECTEDVALUE(DimPL_Line[IsSectionHeader], FALSE()),
+            REMOVEFILTERS(DimPL_Line),
+            DimPL_Line[PL_Line] = CurrentPLLine
+        )
+    )
+ 
+VAR CurrentSection =
+    IF(
+        ISBLANK(CurrentPLLine), BLANK(),
+        CALCULATE(
+            MIN(DimPL_Line[Section]),
+            REMOVEFILTERS(DimPL_Line),
+            DimPL_Line[PL_Line] = CurrentPLLine
+        )
+    )
+ 
+
+VAR DetailValue = [_Dept_Line_Balance]
+
+VAR DetailPLRows =
+    FILTER(
+        ALL('P&L Rows'),
+        VAR RowPLLine = 'P&L Rows'[PL_Line]
+        VAR RowIsTotal =
+            CALCULATE(
+                SELECTEDVALUE(DimPL_Line[IsTotal], FALSE()),
+                REMOVEFILTERS(DimPL_Line),
+                DimPL_Line[PL_Line] = RowPLLine
+            )
+        VAR RowIsSectionHeader =
+            CALCULATE(
+                SELECTEDVALUE(DimPL_Line[IsSectionHeader], FALSE()),
+                REMOVEFILTERS(DimPL_Line),
+                DimPL_Line[PL_Line] = RowPLLine
+            )
+        VAR RowSection =
+            CALCULATE(
+                MIN(DimPL_Line[Section]),
+                REMOVEFILTERS(DimPL_Line),
+                DimPL_Line[PL_Line] = RowPLLine
+            )
+        RETURN
+            RowIsTotal = FALSE()
+            && RowIsSectionHeader = FALSE()
+            && RowSection = CurrentSection
+    )
+ 
+VAR TotalValue =
+    SUMX(DetailPLRows, [_Dept_Line_Balance])
+ 
+VAR PerLineResult = 
+    SWITCH(
+        TRUE(),
+        IsSectionHeader, BLANK(),
+        IsTotal, TotalValue,
+        DetailValue
+    )
+ 
+RETURN
+    IF(HasPLSelection, PerLineResult, BLANK())
