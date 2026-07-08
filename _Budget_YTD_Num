@@ -1,0 +1,12 @@
+_Budget_YTD_Num = 
+VAR CurrentPLLine = SELECTEDVALUE('P&L Rows'[PL_Line])
+VAR IsSectionHeader =
+    IF(ISBLANK(CurrentPLLine), FALSE(),
+        CALCULATE(SELECTEDVALUE(DimPL_Line[IsSectionHeader], FALSE()), REMOVEFILTERS(DimPL_Line), DimPL_Line[PL_Line] = CurrentPLLine))
+VAR FeesYTD = CALCULATE([_Budget_Line_YTD], REMOVEFILTERS('P&L Rows'), 'P&L Rows'[Row Number] = "PL197")
+VAR TaxInsYTD = CALCULATE([_Budget_Line_YTD], REMOVEFILTERS('P&L Rows'), 'P&L Rows'[Row Number] = "PL207")
+VAR RentYTD = CALCULATE([_Budget_Line_YTD], REMOVEFILTERS('P&L Rows'), 'P&L Rows'[Row Number] = "PL208")
+VAR NonContYTD = FeesYTD + TaxInsYTD + RentYTD
+RETURN
+    IF(IsSectionHeader, BLANK(),
+        IF(CurrentPLLine = "Total Non-Controllable Expenses", NonContYTD, [_Budget_Line_YTD]))
