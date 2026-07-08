@@ -1,0 +1,15 @@
+GL_Current_Month_Display = 
+VAR SelectedDate = SELECTEDVALUE(DimDate[Date])
+VAR SignConvention = SELECTEDVALUE(DimPL_Line[SignConvention])
+VAR MonthAmount = 
+    CALCULATE(
+        SUM('General Ledger'[TOTAL]),
+        MONTH('General Ledger'[Period_Date]) = MONTH(SelectedDate),
+        YEAR('General Ledger'[Period_Date]) = YEAR(SelectedDate)
+    )
+RETURN
+IF(
+    ISBLANK(SignConvention),
+    MonthAmount,
+    MonthAmount * SignConvention
+)
