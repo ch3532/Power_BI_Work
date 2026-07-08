@@ -1,0 +1,125 @@
+_Dept_Line_Balance_Monthly = 
+VAR CurrentPLLine = SELECTEDVALUE('P&L Rows'[PL_Line])
+VAR FranRowNum = SELECTEDVALUE('P&L Rows'[Fran Schema])
+VAR ResRevRowNum = SELECTEDVALUE('P&L Rows'[ResRev Schema])
+VAR MktRowNum = SELECTEDVALUE('P&L Rows'[Marketing Schema])
+
+VAR IsSingleDept = HASONEVALUE(Bridge_Dept_Group[DeptGroup Name])
+
+VAR FranPLLine =
+    MAXX(FILTER(ALL(Fran), Fran[PL_Row_Num] = FranRowNum), Fran[PL Line])
+VAR ResRevPLLine =
+    MAXX(FILTER(ALL(ResRev), ResRev[PL_Row_Num] = ResRevRowNum), ResRev[PL Line])
+VAR MktPLLine =
+    MAXX(FILTER(ALL(Marketing), Marketing[PL_Row_Num] = MktRowNum), Marketing[PL Line])
+
+VAR DeptSchemas =
+    CALCULATETABLE(
+        VALUES(DimDepartmentGroup[Schema]),
+        REMOVEFILTERS(DimPL_Line)
+    )
+
+VAR CurrentDeptGroups = VALUES(DimDepartmentGroup[DeptGroup_Key])
+
+VAR FranValue =
+    IF(
+        NOT ISBLANK(FranPLLine) && CONTAINSROW(DeptSchemas, "Fran"),
+        CALCULATE(
+            [P&L Current Month],
+            REMOVEFILTERS(DimPL_Line),
+            REMOVEFILTERS(DimDepartmentGroup),
+            REMOVEFILTERS(DimSchema),
+            KEEPFILTERS(CurrentDeptGroups),
+            DimPL_Line[PL_Line] = FranPLLine,
+            DimPL_Line[Schema] = "Fran"
+        )
+    )
+
+VAR ResRevValue =
+    IF(
+        NOT ISBLANK(ResRevPLLine) && CONTAINSROW(DeptSchemas, "ResRev"),
+        CALCULATE(
+            [P&L Current Month],
+            REMOVEFILTERS(DimPL_Line),
+            REMOVEFILTERS(DimDepartmentGroup),
+            REMOVEFILTERS(DimSchema),
+            KEEPFILTERS(CurrentDeptGroups),
+            DimPL_Line[PL_Line] = ResRevPLLine,
+            DimPL_Line[Schema] = "ResRev"
+        )
+    )
+
+VAR MktValue =
+    IF(
+        NOT ISBLANK(MktPLLine) && CONTAINSROW(DeptSchemas, "Marketing"),
+        CALCULATE(
+            [P&L Current Month],
+            REMOVEFILTERS(DimPL_Line),
+            REMOVEFILTERS(DimDepartmentGroup),
+            REMOVEFILTERS(DimSchema),
+            KEEPFILTERS(CurrentDeptGroups),
+            DimPL_Line[PL_Line] = MktPLLine,
+            DimPL_Line[Schema] = "Marketing"
+        )
+    )
+
+VAR DetailResult = -(FranValue + ResRevValue + MktValue)
+
+VAR TotalResult =
+    SUMX(
+        VALUES(Bridge_Dept_Group[DeptGroup Name]),
+        VAR IterDeptGroups =
+            CALCULATETABLE(
+                VALUES(DimDepartmentGroup[DeptGroup_Key]),
+                ALLEXCEPT(Bridge_Dept_Group, Bridge_Dept_Group[DeptGroup Name])
+            )
+        VAR IterSchemas =
+            CALCULATETABLE(
+                VALUES(DimDepartmentGroup[Schema]),
+                REMOVEFILTERS(DimPL_Line),
+                ALLEXCEPT(Bridge_Dept_Group, Bridge_Dept_Group[DeptGroup Name])
+            )
+        VAR IterFran =
+            IF(
+                NOT ISBLANK(FranPLLine) && CONTAINSROW(IterSchemas, "Fran"),
+                CALCULATE(
+                    [P&L Current Month],
+                    REMOVEFILTERS(DimPL_Line),
+                    REMOVEFILTERS(DimDepartmentGroup),
+                    REMOVEFILTERS(DimSchema),
+                    KEEPFILTERS(IterDeptGroups),
+                    DimPL_Line[PL_Line] = FranPLLine,
+                    DimPL_Line[Schema] = "Fran"
+                )
+            )
+        VAR IterResRev =
+            IF(
+                NOT ISBLANK(ResRevPLLine) && CONTAINSROW(IterSchemas, "ResRev"),
+                CALCULATE(
+                    [P&L Current Month],
+                    REMOVEFILTERS(DimPL_Line),
+                    REMOVEFILTERS(DimDepartmentGroup),
+                    REMOVEFILTERS(DimSchema),
+                    KEEPFILTERS(IterDeptGroups),
+                    DimPL_Line[PL_Line] = ResRevPLLine,
+                    DimPL_Line[Schema] = "ResRev"
+                )
+            )
+        VAR IterMkt =
+            IF(
+                NOT ISBLANK(MktPLLine) && CONTAINSROW(IterSchemas, "Marketing"),
+                CALCULATE(
+                    [P&L Current Month],
+                    REMOVEFILTERS(DimPL_Line),
+                    REMOVEFILTERS(DimDepartmentGroup),
+                    REMOVEFILTERS(DimSchema),
+                    KEEPFILTERS(IterDeptGroups),
+                    DimPL_Line[PL_Line] = MktPLLine,
+                    DimPL_Line[Schema] = "Marketing"
+                )
+            )
+        RETURN -(IterFran + IterResRev + IterMkt)
+    )
+
+RETURN
+    IF(IsSingleDept, DetailResult, TotalResult)
