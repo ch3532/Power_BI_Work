@@ -1,0 +1,17 @@
+Dept_YTD_Display = 
+VAR RawValue = [Dept_YTD_Amount]
+VAR HasPLSelection = NOT ISBLANK(SELECTEDVALUE('P&L Rows'[PL_Line]))
+VAR CurrentPLLine = SELECTEDVALUE('P&L Rows'[PL_Line])
+RETURN
+    IF(
+        ISBLANK(RawValue) || RawValue = 0, "-",
+        IF(
+            HasPLSelection && CurrentPLLine = "Calls Handled",
+            FORMAT(RawValue, "#,##0"),
+            IF(
+                RawValue < 0,
+                "(" & FORMAT(ABS(RawValue), "$#,##0") & ")",
+                FORMAT(RawValue, "$#,##0")
+            )
+        )
+    )
