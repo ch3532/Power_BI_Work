@@ -1,0 +1,75 @@
+_PL_Current_Month_NOI = 
+VAR CurrentSchema = SELECTEDVALUE(DimDepartmentGroup[Schema])
+VAR SelectedDate = MAX(DimDate[Date])
+VAR CurrentCompany = SELECTEDVALUE(DimCompany[Company])
+VAR ValidCompanies = {"200", "240", "310", "320", "350"}
+
+VAR NOI_SectionOrder = 
+    CALCULATE(
+        MIN(DimPL_Line[SectionOrder]),
+        ALL(DimPL_Line),
+        DimPL_Line[Schema] = CurrentSchema,
+        DimPL_Line[Section] = "NET OPERATING INCOME"
+    )
+
+VAR Revenue_SectionOrder = 
+    CALCULATE(
+        MIN(DimPL_Line[SectionOrder]),
+        ALL(DimPL_Line),
+        DimPL_Line[Schema] = CurrentSchema,
+        DimPL_Line[Section] = "REVENUE"
+    )
+
+VAR OperatingDetails = 
+    SUMX(
+        FILTER(
+            ALL(DimPL_Line),
+            DimPL_Line[Schema] = CurrentSchema
+                && DimPL_Line[SectionOrder] >= Revenue_SectionOrder
+                && DimPL_Line[SectionOrder] < NOI_SectionOrder
+                && DimPL_Line[IsTotal] = FALSE()
+                && DimPL_Line[IsSectionHeader] = FALSE()
+        ),
+        VAR LoopPLLineKey = DimPL_Line[PL_Line_Key]
+        VAR LoopSC = DimPL_Line[SignConvention]
+        VAR LoopGL = 
+            CALCULATE(
+                SUM('General Ledger'[TOTAL]),
+                DimPL_Line[PL_Line_Key] = LoopPLLineKey,
+                'General Ledger'[Company] IN ValidCompanies,
+                ISBLANK(CurrentCompany) 
+                    || 'General Ledger'[Company] = CurrentCompany,
+                MONTH('General Ledger'[Period_Date]) = MONTH(SelectedDate),
+                YEAR('General Ledger'[Period_Date]) = YEAR(SelectedDate),
+                REMOVEFILTERS(DimDate),
+                REMOVEFILTERS(DimPL_Line)
+            )
+        RETURN LoopGL * LoopSC
+    )
+
+VAR RentLease = 
+    SUMX(
+        FILTER(
+            ALL(DimPL_Line),
+            DimPL_Line[Schema] = CurrentSchema
+                && DimPL_Line[Section] = "RENT/LEASE"
+                && DimPL_Line[IsTotal] = TRUE()
+        ),
+        VAR LoopPLLineKey = DimPL_Line[PL_Line_Key]
+        VAR LoopSC = DimPL_Line[SignConvention]
+        VAR LoopGL = 
+            CALCULATE(
+                SUM('General Ledger'[TOTAL]),
+                DimPL_Line[PL_Line_Key] = LoopPLLineKey,
+                'General Ledger'[Company] IN ValidCompanies,
+                ISBLANK(CurrentCompany) 
+                    || 'General Ledger'[Company] = CurrentCompany,
+                MONTH('General Ledger'[Period_Date]) = MONTH(SelectedDate),
+                YEAR('General Ledger'[Period_Date]) = YEAR(SelectedDate),
+                REMOVEFILTERS(DimDate),
+                REMOVEFILTERS(DimPL_Line)
+            )
+        RETURN LoopGL * LoopSC
+    )
+
+RETURN OperatingDetails + RentLease
