@@ -1,0 +1,23 @@
+P&L Total Value = 
+VAR SelectedDate = MAX(DimDate[Date])
+VAR JanEndDate = DATE(2025, 01, 31)
+VAR CurrentCompany = SELECTEDVALUE(DimCompany[Company])
+VAR ValidCompanies = {"200", "240", "310", "320", "350"}
+VAR CurrentPLLine = SELECTEDVALUE(DimPL_Line[PL_Line])
+VAR CurrentSection = SELECTEDVALUE(DimPL_Line[Section])
+
+// Helper: sum all detail lines in a given section
+VAR SectionTotal =
+    CALCULATE(
+        [P&L Value],
+        ALLEXCEPT(DimPL_Line, DimPL_Line[Section]),
+        DimPL_Line[IsTotal] = FALSE,
+        DimPL_Line[IsSectionHeader] = FALSE
+    )
+
+RETURN
+IF(
+    SELECTEDVALUE(DimPL_Line[IsTotal]) = TRUE,
+    SectionTotal,
+    BLANK()
+)
