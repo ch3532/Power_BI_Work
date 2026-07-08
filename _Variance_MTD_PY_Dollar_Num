@@ -1,0 +1,4 @@
+_Variance_MTD_PY_Dollar_Num = 
+VAR Result = ([_ActualNum_MTD] - COALESCE([_Actual_MTD_PY_Num], 0)) * [_SignFlip]
+RETURN
+    IF(ISBLANK(SELECTEDVALUE('P&L Rows'[PL_Line])), BLANK(), Result)
