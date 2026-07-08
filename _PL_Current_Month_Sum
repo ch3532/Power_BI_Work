@@ -1,0 +1,9 @@
+_PL_Current_Month_Sum = 
+SUMX(
+    FILTER(
+        ALL(DimPL_Line),
+        DimPL_Line[IsTotal] = FALSE()
+            && DimPL_Line[IsSectionHeader] = FALSE()
+    ),
+    [P&L Current Month]
+)
