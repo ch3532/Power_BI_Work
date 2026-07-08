@@ -1,0 +1,44 @@
+_PL_Net_Operating_Income = 
+VAR CurrentSchema = SELECTEDVALUE(DimDepartmentGroup[Schema])
+
+VAR NOI_SectionOrder = 
+    CALCULATE(
+        MIN(DimPL_Line[SectionOrder]),
+        ALL(DimPL_Line),
+        DimPL_Line[Schema] = CurrentSchema,
+        DimPL_Line[Section] = "NET OPERATING INCOME"
+    )
+
+VAR Revenue_SectionOrder = 
+    CALCULATE(
+        MIN(DimPL_Line[SectionOrder]),
+        ALL(DimPL_Line),
+        DimPL_Line[Schema] = CurrentSchema,
+        DimPL_Line[Section] = "REVENUE"
+    )
+
+VAR OperatingDetails = 
+    SUMX(
+        FILTER(
+            ALL(DimPL_Line),
+            DimPL_Line[Schema] = CurrentSchema
+                && DimPL_Line[SectionOrder] >= Revenue_SectionOrder
+                && DimPL_Line[SectionOrder] < NOI_SectionOrder
+                && DimPL_Line[IsTotal] = FALSE()
+                && DimPL_Line[IsSectionHeader] = FALSE()
+        ),
+        [_PL_Line_Balance]
+    )
+
+VAR RentLease = 
+    SUMX(
+        FILTER(
+            ALL(DimPL_Line),
+            DimPL_Line[Schema] = CurrentSchema
+                && DimPL_Line[Section] = "RENT/LEASE"
+                && DimPL_Line[IsTotal] = TRUE()
+        ),
+        [_PL_Line_Balance]
+    )
+
+RETURN OperatingDetails + RentLease
