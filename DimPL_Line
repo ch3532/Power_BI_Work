@@ -1,0 +1,18 @@
+DimPL_Line = 
+VAR BaseData = 
+    SUMMARIZE(
+        DimPL_Mapping,
+        DimPL_Mapping[PL_Line],
+        DimPL_Mapping[Schema]
+    )
+RETURN
+ADDCOLUMNS(
+    BaseData,
+    "DisplayOrder", CALCULATE(MIN(DimPL_Mapping[DisplayOrder])),
+    "Section", CALCULATE(MIN(DimPL_Mapping[Section])),
+    "SectionOrder", CALCULATE(MIN(DimPL_Mapping[SectionOrder])),
+    "IsTotal", CALCULATE(MAXX(DimPL_Mapping, IF(DimPL_Mapping[IsTotal], 1, 0))) = 1,
+    "IsSectionHeader", CALCULATE(MAXX(DimPL_Mapping, IF(DimPL_Mapping[IsSectionHeader], 1, 0))) = 1,
+    "SignConvention", CALCULATE(MIN(DimPL_Mapping[SignConvention])),
+    "PL_Line_Key", [PL_Line] & "|" & [Schema]
+)
