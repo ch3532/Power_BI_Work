@@ -1,0 +1,48 @@
+P&L Value = 
+VAR SelectedDate = MAX(DimDate[Date])
+VAR JanEndDate = DATE(2025, 1, 31)
+VAR CurrentCompany = SELECTEDVALUE(DimCompany[Company])
+VAR ValidCompanies = {"200", "240", "310", "320", "350"}
+VAR CurrentPLLineKey = SELECTEDVALUE(DimPL_Line[PL_Line_Key])
+VAR CurrentIsTotal = SELECTEDVALUE(DimPL_Line[IsTotal])
+VAR CurrentIsSectionHeader = SELECTEDVALUE(DimPL_Line[IsSectionHeader])
+VAR CurrentSignConvention = SELECTEDVALUE(DimPL_Line[SignConvention])
+VAR CurrentSection = SELECTEDVALUE(DimPL_Line[Section])
+VAR SelectedYear = YEAR(SelectedDate)
+VAR FiscalYearStart = DATE(SelectedYear, 1, 1)
+
+VAR NovBal = 
+    IF(
+        SelectedYear = 2025,
+        CALCULATE(
+            SUM('Jan2025 - TB - Ending Values'[Ending Balance]),
+            'Jan2025 - TB - Ending Values'[Entity] IN ValidCompanies,
+            ISBLANK(CurrentCompany) || 'Jan2025 - TB - Ending Values'[Entity] = CurrentCompany,
+            REMOVEFILTERS(DimDate)
+        ),
+        0
+    )
+
+VAR GLStart = 
+    IF(SelectedYear = 2025, JanEndDate, FiscalYearStart - 1)
+
+VAR GLActivity = 
+    CALCULATE(
+        SUM('General Ledger'[TOTAL]),
+        'General Ledger'[Company] IN ValidCompanies,
+        ISBLANK(CurrentCompany) || 'General Ledger'[Company] = CurrentCompany,
+        'General Ledger'[Period_Date] > GLStart,
+        'General Ledger'[Period_Date] <= EOMONTH(SelectedDate, 0),
+        REMOVEFILTERS(DimDate)
+    )
+
+VAR RawBalance = NovBal + GLActivity
+VAR SignedBalance = RawBalance * CurrentSignConvention
+
+RETURN
+SWITCH(
+    TRUE(),
+    CurrentIsSectionHeader, BLANK(),
+    CurrentIsTotal && CurrentSection <> "RENT/LEASE", BLANK(),
+    SignedBalance
+)
