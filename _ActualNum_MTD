@@ -1,0 +1,5 @@
+_ActualNum_MTD = 
+VAR ActStr = [P&L Current Month Display Value]
+RETURN
+    IF(ActStr = "-", 0,
+        VALUE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(ActStr, "$", ""), "(", "-"), ")", "")))
