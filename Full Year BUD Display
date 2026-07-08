@@ -1,0 +1,21 @@
+Full Year BUD Display = 
+VAR CurrentPLLine = SELECTEDVALUE ( 'P&L Rows'[PL_Line] )
+VAR IsSectionHeader =
+    IF ( ISBLANK ( CurrentPLLine ), FALSE (),
+        CALCULATE ( SELECTEDVALUE ( DimPL_Line[IsSectionHeader], FALSE () ),
+            REMOVEFILTERS ( DimPL_Line ), DimPL_Line[PL_Line] = CurrentPLLine ))
+
+VAR FeesFY = CALCULATE ( [_Budget_Line_Full_Year], REMOVEFILTERS ( 'P&L Rows' ), 'P&L Rows'[Row Number] = "PL197" )
+VAR TaxInsuranceBankFY = CALCULATE ( [_Budget_Line_Full_Year], REMOVEFILTERS ( 'P&L Rows' ), 'P&L Rows'[Row Number] = "PL207" )
+VAR RentLeaseFY = CALCULATE ( [_Budget_Line_Full_Year], REMOVEFILTERS ( 'P&L Rows' ), 'P&L Rows'[Row Number] = "PL208" )
+VAR NonControllableFY = FeesFY + TaxInsuranceBankFY + RentLeaseFY
+
+VAR RawValue =
+    IF ( CurrentPLLine = "Total Non-Controllable Expenses", NonControllableFY, [_Budget_Line_Full_Year] )
+
+RETURN
+    IF ( IsSectionHeader, BLANK (),
+        IF ( ISBLANK ( RawValue ) || RawValue = 0, "-",
+            IF ( CurrentPLLine = "Calls Handled", FORMAT ( RawValue, "#,##0" ),
+                IF ( RawValue < 0, "(" & FORMAT ( ABS ( RawValue ), "$#,##0" ) & ")",
+                    FORMAT ( RawValue, "$#,##0" ) ))))
