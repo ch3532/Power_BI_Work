@@ -1,0 +1,14 @@
+Dept_YTD_Pct = 
+VAR DeptAmount = [Dept_YTD_Amount]
+VAR TotalAmount = 
+    SUMX(
+        ALL(Bridge_Dept_Group[DeptGroup Name]),
+        [Dept_YTD_Amount]
+    )
+VAR Pct = DIVIDE(DeptAmount, TotalAmount)
+RETURN
+    IF(
+        ISBLANK(DeptAmount) || ISBLANK(TotalAmount) || TotalAmount = 0 || Pct = 0,
+        "-",
+        FORMAT(Pct, "0.0%")
+    )
