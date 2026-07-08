@@ -1,0 +1,12 @@
+_Budget_MTD_Num = 
+VAR CurrentPLLine = SELECTEDVALUE('P&L Rows'[PL_Line])
+VAR IsSectionHeader =
+    IF(ISBLANK(CurrentPLLine), FALSE(),
+        CALCULATE(SELECTEDVALUE(DimPL_Line[IsSectionHeader], FALSE()), REMOVEFILTERS(DimPL_Line), DimPL_Line[PL_Line] = CurrentPLLine))
+VAR FeesMTD = CALCULATE([_Budget_Line_MTD], REMOVEFILTERS('P&L Rows'), 'P&L Rows'[Row Number] = "PL197")
+VAR TaxInsMTD = CALCULATE([_Budget_Line_MTD], REMOVEFILTERS('P&L Rows'), 'P&L Rows'[Row Number] = "PL207")
+VAR RentMTD = CALCULATE([_Budget_Line_MTD], REMOVEFILTERS('P&L Rows'), 'P&L Rows'[Row Number] = "PL208")
+VAR NonContMTD = FeesMTD + TaxInsMTD + RentMTD
+RETURN
+    IF(IsSectionHeader, BLANK(),
+        IF(CurrentPLLine = "Total Non-Controllable Expenses", NonContMTD, [_Budget_Line_MTD]))
