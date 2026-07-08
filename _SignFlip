@@ -1,0 +1,8 @@
+_SignFlip = 
+VAR PLRow = SELECTEDVALUE('P&L Rows'[PL_Row_Num])
+RETURN
+    IF(
+        PLRow IN {"PL101","PL102","PL103","PL104","PL105","PL106","PL107","PL108",
+                   "PL109","PL110","PL111","PL112","PL113","PL114","PL115","PL116"},
+        1, -1
+    )
